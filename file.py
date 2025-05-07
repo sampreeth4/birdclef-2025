@@ -40,30 +40,24 @@ class BirdDataset(Dataset):
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
         file_path = os.path.join(self.audio_dir, row["filename"])
-        
-        # Load the full audio
-        y, sr = librosa.load(file_path, sr=cfg.sr)
 
-        # Random 5 second clip
+        y, sr = librosa.load(file_path, sr=cfg.sr)
         clip_samples = cfg.sr * cfg.duration
         if len(y) < clip_samples:
             padding = clip_samples - len(y)
             y = np.pad(y, (0, padding))
-        else:
+        elif len(y) > clip_samples:
             start_idx = np.random.randint(0, len(y) - clip_samples)
             y = y[start_idx:start_idx + clip_samples]
 
-        # Convert to mel spectrogram
-        mel_spec = librosa.feature.melspectrogram(
-            y, sr=sr, n_mels=cfg.n_mels, fmin=cfg.fmin, fmax=cfg.fmax, hop_length=cfg.hop_length
-        )
-        mel_spec = librosa.power_to_db(mel_spec).astype(np.float32)
 
-        # Normalize
+        mel_spec = librosa.feature.melspectrogram(
+            y=y, sr=sr, n_mels=cfg.n_mels, fmin=cfg.fmin, fmax=cfg.fmax, hop_length=cfg.hop_length
+        )
+
+        mel_spec = librosa.power_to_db(mel_spec).astype(np.float32)
         mel_spec -= mel_spec.mean()
         mel_spec /= mel_spec.std()
-
-        # (Channels, Height, Width)
         mel_spec = np.expand_dims(mel_spec, axis=0)
 
         if self.transform:
@@ -85,45 +79,44 @@ class BirdCLEFModel(nn.Module):
     def forward(self, x):
         return self.backbone(x)
 
-# Prepare train data
-train_df = pd.read_csv('C:/Users/A.SREE SAI SAMPREETH/Downloads/birdclef-2025/train.csv')  # TODO: set correct path
+# Main training logic
+if __name__ == "__main__":
+    # Prepare train data
+    train_df = pd.read_csv('C:/Users/A.SREE SAI SAMPREETH/Downloads/birdclef-2025/train.csv')  # Adjust path
+    label_map = {label: idx for idx, label in enumerate(sorted(train_df["primary_label"].unique()))}
+    train_df["primary_label_idx"] = train_df["primary_label"].map(label_map)
 
-# Map primary labels to 0-205
-label_map = {label: idx for idx, label in enumerate(sorted(train_df["primary_label"].unique()))}
-train_df["primary_label_idx"] = train_df["primary_label"].map(label_map)
+    train_dataset = BirdDataset(train_df, 'C:/Users/A.SREE SAI SAMPREETH/Downloads/birdclef-2025/train_audio')  # Adjust path
+    train_loader = DataLoader(train_dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers)
 
-train_dataset = BirdDataset(train_df, 'C:/Users/A.SREE SAI SAMPREETH/Downloads/birdclef-2025/train_audio')  # TODO: set correct path
-train_loader = DataLoader(train_dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers)
+    model = BirdCLEFModel().to(cfg.device)
 
-# Train
-model = BirdCLEFModel().to(cfg.device)
+    # Freeze backbone, train only classifier head
+    for param in model.backbone.parameters():
+        param.requires_grad = False
+    for param in model.backbone.classifier.parameters():
+        param.requires_grad = True
 
-# Freeze all except head
-for param in model.backbone.parameters():
-    param.requires_grad = False
-for param in model.backbone.classifier.parameters():
-    param.requires_grad = True
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    criterion = nn.BCEWithLogitsLoss()
 
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
-criterion = nn.BCEWithLogitsLoss()
+    EPOCHS = 5
+    for epoch in range(EPOCHS):
+        model.train()
+        running_loss = 0.0
+        pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS}")
 
-EPOCHS = 5
-for epoch in range(EPOCHS):
-    model.train()
-    running_loss = 0.0
-    pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS}")
+        for inputs, targets in pbar:
+            inputs, targets = inputs.to(cfg.device), targets.to(cfg.device)
 
-    for inputs, targets in pbar:
-        inputs, targets = inputs.to(cfg.device), targets.to(cfg.device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            loss.backward()
+            optimizer.step()
 
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
+            running_loss += loss.item()
+            pbar.set_postfix(loss=running_loss / (pbar.n + 1))
 
-        running_loss += loss.item()
-        pbar.set_postfix(loss=running_loss / (pbar.n + 1))
-
-# Save model
-torch.save(model.state_dict(), 'efficientnet_b0_birdclef.pth')
+    # Save model
+    torch.save(model.state_dict(), 'efficientnet_b0_birdclef.pth')

@@ -4,18 +4,52 @@
 # torchvision==0.17.2+cu121
 # -f https://download.pytorch.org/whl/torch_stable.html
 
-# EfficientNet and other vision models
-timm==0.9.12
+# # EfficientNet and other vision models
+# timm==0.9.12
 
-# Audio processing
-librosa==0.10.1
-soundfile==0.12.1
+# # Audio processing
+# librosa==0.10.1
+# soundfile==0.12.1
 
-# Utilities
-pandas==2.1.1
-tqdm==4.66.1
-numpy==1.26.0
-scipy==1.11.3
+# # Utilities
+# pandas==2.1.1
+# tqdm==4.66.1
+# numpy==1.26.0
+# scipy==1.11.3
 
-# (Optional) Visualization
-matplotlib==3.8.0
+# # (Optional) Visualization
+# matplotlib==3.8.0
+
+# 2nd
+# Core dependencies
+# torch>=2.0.0
+# torchaudio>=2.0.0
+# torchvision>=0.15.0
+
+# GPU-specific: Make sure to match this with your CUDA version
+# Example: For CUDA 11.8, you might want:
+# pip install torch==2.0.0+cu118 torchvision==0.15.0+cu118 torchaudio==2.0.0+cu118 -f https://download.pytorch.org/whl/torch_stable.html
+
+# Data handling and processing
+numpy
+pandas
+scikit-learn
+librosa
+matplotlib
+
+# Audio augmentations
+audiomentations
+
+# Progress bars
+tqdm
+
+# Logging and monitoring
+wandb
+
+# File I/O
+soundfile
+omegaconf
+
+
+# OS utilities
+pyyaml
