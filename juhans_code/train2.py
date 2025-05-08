@@ -51,7 +51,7 @@ class CFG:
     audio_data_dir = "C:/Users/A.SREE SAI SAMPREETH/OneDrive/Documents/GitHub/birdclef-2025/juhans_code/birdclef_data_2025"  # 10초 세그먼트 데이터 폴더
 
     # 모델명 변경
-    model_name = 'tf_efficientnet_b0.ns_jft_in1k'  # efficientvit_b1, regnety_008, efficientnet_b1, efficientvit_b0, efficientnet_b0, convnextv2_tiny, convnext2_base, convnextv2_atto, lcnet_050 등 사용 가능
+    model_name = 'edgenext_base'  # efficientvit_b1, regnety_008, efficientnet_b1, efficientvit_b0, efficientnet_b0, convnextv2_tiny, convnext2_base, convnextv2_atto, lcnet_050 등 사용 가능
     pretrained = True
     in_channels = 1
 
@@ -788,14 +788,14 @@ class BirdCLEFModel(nn.Module):
             drop_path_rate=0.25
         )
         
-        backbone_out = self.backbone.classifier.in_features
+        backbone_out = self.backbone.get_classifier().in_features
         self.backbone.classifier = nn.Identity()
         self.pooling = nn.AdaptiveAvgPool2d(1)
         self.feat_dim = backbone_out
         self.classifier = nn.Linear(backbone_out, cfg.num_classes)
         
     def forward(self, x):
-        features = self.backbone(x)
+        features = self.backbone.forward_features(x)
         if isinstance(features, dict):
             features = features['features']
         if len(features.shape) == 4:
