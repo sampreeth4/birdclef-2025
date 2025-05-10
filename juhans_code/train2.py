@@ -68,7 +68,7 @@ class CFG:
     FMAX = 16000
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    epochs = 100  
+    epochs = 10 
     batch_size = 16  
     #criterion = 'BCEWithLogitsLoss'
     criterion = 'BCEFocalLoss'
